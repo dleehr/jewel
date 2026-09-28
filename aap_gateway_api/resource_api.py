@@ -6,13 +6,21 @@ from ansible_base.feature_flags.models import AAPFlag
 from ansible_base.rbac.models import DABPermission, RoleDefinition
 from ansible_base.resource_registry.constants import (
     SHARED_AAP_FLAG_RESOURCE_TYPE,
+    SHARED_CREDENTIAL_RESOURCE_TYPE,
     SHARED_ORGANIZATION_RESOURCE_TYPE,
     SHARED_ROLE_DEFINITION_RESOURCE_TYPE,
     SHARED_TEAM_RESOURCE_TYPE,
     SHARED_USER_RESOURCE_TYPE,
 )
 from ansible_base.resource_registry.registry import ParentResource, ResourceConfig, ServiceAPIConfig, SharedResource
-from ansible_base.resource_registry.shared_types import FeatureFlagType, OrganizationType, RoleDefinitionType, TeamType, UserType
+from ansible_base.resource_registry.shared_types import (
+    FeatureFlagType,
+    OrganizationType,
+    RoleDefinitionType,
+    SharedCredential,
+    TeamType,
+    UserType,
+)
 from ansible_base.resource_registry.utils.resource_type_processor import ResourceTypeProcessor
 from crum import get_current_user
 from django.db.models import Model
@@ -270,6 +278,7 @@ class APIConfig(ServiceAPIConfig):
         SHARED_USER_RESOURCE_TYPE: GetOrCreateProcessor,
         SHARED_ROLE_DEFINITION_RESOURCE_TYPE: GatewayRoleDefinitionProcessor,
         SHARED_AAP_FLAG_RESOURCE_TYPE: GetOrCreateProcessor,
+        SHARED_CREDENTIAL_RESOURCE_TYPE: GetOrCreateProcessor,
     }
 
 
@@ -295,5 +304,10 @@ RESOURCE_LIST = (
     ResourceConfig(
         AAPFlag,
         shared_resource=SharedResource(serializer=FeatureFlagType, is_provider=True),
+    ),
+    ResourceConfig(
+        models.Credential,
+        shared_resource=SharedResource(serializer=SharedCredential, is_provider=True),
+        parent_resources=[ParentResource(model=models.Organization, field_name="organization")],
     ),
 )
