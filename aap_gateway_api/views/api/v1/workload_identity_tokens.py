@@ -4,9 +4,9 @@ from uuid import uuid4
 
 import jwt
 from ansible_base.lib.logging import log_auth_event, log_auth_warning
-from ansible_base.lib.utils.response import get_fully_qualified_url
 from ansible_base.lib.utils.views.ansible_base import AnsibleBaseView
 from ansible_base.lib.workload_identity import SCOPE_REGISTRY, AutomationControllerJobScope
+from oauth2_provider.settings import oauth2_settings
 from rest_framework import status
 from rest_framework.response import Response
 
@@ -121,10 +121,21 @@ class WorkloadIdentityTokensView(AnsibleBaseView):
         jwt_issuance_timestamp = datetime.now(tz=UTC).timestamp()
         # WIT issues a JWT with exp claim set to current time plus the configured TTL preference
         # WIT sets other standard claims https://datatracker.ietf.org/doc/html/rfc7519#section-4.1 to reasonable values
-        # WIT issues a JWT with the iss claim matching the OIDC Discovery configuration in AAP-43413
+        # WIT issues a JWT with the iss claim matching the OIDC Discovery configuration in AAP-43413.
+        # oauth2_settings.oidc_issuer() is the same helper ConnectDiscoveryInfoView uses to build the
+        # discovery document's "issuer" field (checks OIDC_ISS_ENDPOINT first, falls back to
+        # reversing the discovery URL otherwise) - calling it here guarantees this matches by
+        # construction, rather than independently re-deriving the issuer via a different URL name
+        # (oauth_authorization_root_view is mounted at "/o/", with a trailing slash the discovery
+        # issuer doesn't have, which caused a real mismatch previously).
+        # NOTE: this only holds as long as FRONT_END_URL is set (which seeds OIDC_ISS_ENDPOINT in
+        # load_oidc_provider_settings) - deployments MUST set it explicitly to Gateway's public URL.
+        # Without it, oidc_issuer() falls back to build_absolute_uri() on *this* request, which for a
+        # service-to-service WIT call may reflect an internal address (behind a load balancer/proxy,
+        # a pod-internal hostname, etc.) that external JWT consumers can't resolve.
         jwt_default_claims = {
             "jti": str(uuid4()),
-            "iss": get_fully_qualified_url("oauth2_provider:oauth_authorization_root_view"),
+            "iss": oauth2_settings.oidc_issuer(request._request),
             "sub": scope_class.generate_sub_claim(workload_claims),
             "aud": audience,
             "exp": jwt_issuance_timestamp + jwt_ttl_seconds,
