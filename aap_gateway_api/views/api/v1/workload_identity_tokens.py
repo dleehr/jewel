@@ -5,7 +5,7 @@ from uuid import uuid4
 import jwt
 from ansible_base.lib.logging import log_auth_event, log_auth_warning
 from ansible_base.lib.utils.views.ansible_base import AnsibleBaseView
-from ansible_base.lib.workload_identity import SCOPE_REGISTRY, AutomationControllerJobScope
+from ansible_base.lib.workload_identity import SCOPE_REGISTRY, AutomationControllerJobScope, EDACredentialResolutionScope
 from oauth2_provider.settings import oauth2_settings
 from rest_framework import status
 from rest_framework.response import Response
@@ -20,6 +20,7 @@ logger = logging.getLogger("aap.gateway.views.workload_identity_tokens")
 
 SCOPE_SERVICE_AUTHORIZATION = {
     AutomationControllerJobScope.name: DefaultServiceType.CONTROLLER.value,
+    EDACredentialResolutionScope.name: DefaultServiceType.EDA.value,
 }
 
 WIT_REQUEST_REJECTED_MSG = "Workload identity token request rejected: %s"
